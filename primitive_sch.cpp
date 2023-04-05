@@ -1,71 +1,92 @@
 #include <iostream>
-#include <algorithm>
 #include <vector>
-using namespace std;
+#include <algorithm>
 
 struct Process {
-    int pid;
-    int at;
-    int bt;
+    int id;
+    int arrival_time;
+    int burst_time;
     int priority;
-    int ct;
-    int wt;
-    int tat;
+    int completion_time;
+    int turnaround_time;
+    int waiting_time;
 };
 
-bool cmp(Process a, Process b) {
-    if (a.priority != b.priority)
-        return a.priority > b.priority;
-    else
-        return a.at < b.at;
+bool compareArrivalTime(const Process &a, const Process &b) {
+    return a.arrival_time < b.arrival_time;
+}
+
+bool comparePriority(const Process &a, const Process &b) {
+    return a.priority < b.priority;
 }
 
 int main() {
     int n;
-    cout << "Enter the number of processes: ";
-    cin >> n;
-    
-    vector<Process> processes(n);
-    for (int i = 0; i < n; i++) {
-        cout << "Enter arrival time, burst time, priority for process " << i+1 << ": ";
-        cin >> processes[i].at >> processes[i].bt >> processes[i].priority;
-        processes[i].pid = i+1;
+    std::cout << "Enter the number of processes: ";
+    std::cin >> n;
+
+    std::vector<Process> processes(n);
+    for (int i = 0; i < n; ++i) {
+        processes[i].id = i + 1;
+        std::cout << "Enter arrival time, burst time, and priority for process " << i + 1 << ": ";
+        std::cin >> processes[i].arrival_time >> processes[i].burst_time >> processes[i].priority;
     }
 
-    sort(processes.begin(), processes.end(), cmp);
+    std::sort(processes.begin(), processes.end(), compareArrivalTime);
+    int current_time = processes[0].arrival_time;
 
-    int time = 0, total_wt = 0, total_tat = 0;
+    while (!processes.empty()) {
+        std::vector<Process> ready_queue;
+        for (const auto &p : processes) {
+            if (p.arrival_time <= current_time) {
+                ready_queue.push_back(p);
+            } else {
+                break;
+            }
+        }
+
+        if (!ready_queue.empty()) {
+            std::sort(ready_queue.begin(), ready_queue.end(), comparePriority);
+            Process &selected_process = ready_queue.front();
+            selected_process.completion_time = current_time + selected_process.burst_time;
+            selected_process.turnaround_time = selected_process.completion_time - selected_process.arrival_time;
+            selected_process.waiting_time = selected_process.turnaround_time - selected_process.burst_time;
+            current_time = selected_process.completion_time;
+
+            processes.erase(std::remove_if(processes.begin(), processes.end(),
+                                           [&](const Process &p) { return p.id == selected_process.id; }),
+                            processes.end());
+            std::cout << "P" << selected_process.id << "\t" << selected_process.arrival_time << "\t"
+                      << selected_process.burst_time << "\t" << selected_process.priority << "\t"
+                      << selected_process.completion_time << "\t" << selected_process.turnaround_time << "\t"
+                      << selected_process.waiting_time << std::endl;
+        } else {
+            current_time++;
+        }
+    }
+
+    // Calculate performance metrics
+    double avg_turnaround_time = 0;
+    double avg_waiting_time = 0;
+    double throughput = 0;
     double cpu_utilization = 0;
 
-    for (int i = 0; i < n; i++) {
-        if (time < processes[i].at) {
-            time = processes[i].at;
-        }
-        processes[i].ct = time + processes[i].bt;
-        processes[i].tat = processes[i].ct - processes[i].at;
-        processes[i].wt = processes[i].tat - processes[i].bt;
-        total_wt += processes[i].wt;
-        total_tat += processes[i].tat;
-        cpu_utilization += processes[i].bt;
-        time = processes[i].ct;
+    for (const auto &p : processes)
+    {
+        avg_turnaround_time += p.turnaround_time;
+        avg_waiting_time += p.waiting_time;
     }
+    avg_turnaround_time /= n;
+    avg_waiting_time /= n;
 
-    double avg_wt = (double)total_wt / n;
-    double avg_tat = (double)total_tat / n;
-    cpu_utilization /= time;
-    double throughput = (double)n / time;
+    throughput = double(n) / current_time;
 
-    cout << "PID\tAT\tBT\tPriority\tCT\tWT\tTAT" << endl;
-    for (int i = 0; i < n; i++) {
-        cout << processes[i].pid << "\t" << processes[i].at << "\t" << processes[i].bt << "\t" 
-             << processes[i].priority << "\t\t" << processes[i].ct << "\t" << processes[i].wt 
-             << "\t" << processes[i].tat << endl;
-    }
+    cpu_utilization = (current_time - processes.front().arrival_time) / double(current_time)*100;
 
-    cout << "Average Waiting Time: " << avg_wt << endl;
-    cout << "CPU Utilization: " << cpu_utilization << endl;
-    cout << "Average Turnaround Time: " << avg_tat << endl;
-    cout << "Throughput: " << throughput << endl;
+    // Display performance metrics
+
+    std::cout << "Throughput: " << throughput*100 << std::endl;
+    std::cout << "CPU utilization: " << cpu_utilization << std::endl;
 
     return 0;
 }
