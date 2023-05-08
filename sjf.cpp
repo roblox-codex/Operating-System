@@ -1,82 +1,74 @@
 #include <iostream>
-#include <algorithm>
-#include <vector>
-
 using namespace std;
 
-struct Process {
-    int pid; // process id
-    int burst_time; // burst time or execution time
-    int arrival_time; // arrival time
+struct proc
+{
+    int no, at, bt, it, ct, tat, wt;
 };
 
-bool compare(Process p1, Process p2) {
-    // sort processes by arrival time and burst time
-    if (p1.arrival_time == p2.arrival_time)
-        return p1.burst_time < p2.burst_time;
-    else
-        return p1.arrival_time < p2.arrival_time;
+struct proc read(int i)
+{
+    struct proc p;
+    cout << "\nProcess No: " << i << endl;
+    p.no = i;
+    cout << "Enter Arrival Time: ";
+    cin >> p.at;
+    cout << "Enter Burst Time: ";
+    cin >> p.bt;
+    return p;
 }
 
-void sjf(vector<Process> processes) {
-    int n = processes.size();
-    int current_time = 0;
-    float average_waiting_time = 0, average_turnaround_time = 0;
-    
-    // sort processes by arrival time and burst time
-    sort(processes.begin(), processes.end(), compare);
-    
-    // calculate waiting time and turnaround time for each process
-    for (int i = 0; i < n; i++) {
-        // execute process
-        cout << "Process " << processes[i].pid << " is executing.\n";
-        current_time += processes[i].burst_time;
-        
-        // calculate waiting time and turnaround time
-        int waiting_time = current_time - processes[i].arrival_time - processes[i].burst_time;
-        int turnaround_time = current_time - processes[i].arrival_time;
-        average_waiting_time += waiting_time;
-        average_turnaround_time += turnaround_time;
-        
-        // print process information
-        cout << "Process " << processes[i].pid << " finished execution.\n";
-        cout << "Waiting time: " << waiting_time << "\n";
-        cout << "Turnaround time: " << turnaround_time << "\n\n";
-    }
-    
-    // calculate average waiting time and average turnaround time
-    average_waiting_time /= n;
-    average_turnaround_time /= n;
-    
-    // calculate CPU utilization
-    float total_burst_time = 0;
-    for (int i = 0; i < n; i++) {
-        total_burst_time += processes[i].burst_time;
-    }
-    float cpu_utilization = (total_burst_time / current_time) * 100;
-    
-    // print average waiting time, average turnaround time, and CPU utilization
-    cout << "Average waiting time: " << average_waiting_time << "\n";
-    cout << "Average turnaround time: " << average_turnaround_time << "\n";
-    cout << "CPU utilization: " << cpu_utilization << "%\n";
-}
-
-int main() {
-    // get number of processes from user
-    int n;
-    cout << "Enter the number of processes: ";
+int main()
+{
+    int n, j, min = 0;
+    float avgtat = 0, avgwt = 0;
+    struct proc p[10], temp;
+    cout << "<--SJF Scheduling Algorithm (Non-Preemptive)-->\n";
+    cout << "Enter Number of Processes: ";
     cin >> n;
-    
-    // create processes and get input from user
-    vector<Process> processes(n);
-    for (int i = 0; i < n; i++) {
-        cout << "Enter the arrival time and burst time for process " << i+1 << ": ";
-        cin >> processes[i].arrival_time >> processes[i].burst_time;
-        processes[i].pid = i+1;
+    for (int i = 0; i < n; i++)
+        p[i] = read(i + 1);
+    for (int i = 0; i < n - 1; i++)
+        for (j = 0; j < n - i - 1; j++)
+            if (p[j].at > p[j + 1].at)
+            {
+                temp = p[j];
+                p[j] = p[j + 1];
+                p[j + 1] = temp;
+            }
+    for (j = 1; j < n && p[j].at == p[0].at; j++)
+        if (p[j].bt < p[min].bt)
+            min = j;
+    temp = p[0];
+    p[0] = p[min];
+    p[min] = temp;
+    p[0].it = p[0].at;
+    p[0].ct = p[0].it + p[0].bt;
+    for (int i = 1; i < n; i++)
+    {
+        for (j = i + 1, min = i; j < n && p[j].at <= p[i - 1].ct; j++)
+            if (p[j].bt < p[min].bt)
+                min = j;
+        temp = p[i];
+        p[i] = p[min];
+        p[min] = temp;
+        if (p[i].at <= p[i - 1].ct)
+            p[i].it = p[i - 1].ct;
+        else
+            p[i].it = p[i].at;
+        p[i].ct = p[i].it + p[i].bt;
     }
-    
-    // run SJF scheduling algorithm
-    sjf(processes);
-    
+    cout << "\nProcess\t\tAT\tBT\tCT\tTAT\tWT\tRT\n";
+    for (int i = 0; i < n; i++)
+    {
+        p[i].tat = p[i].ct - p[i].at;
+        avgtat += p[i].tat;
+        p[i].wt = p[i].tat - p[i].bt;
+        avgwt += p[i].wt;
+        cout << "P" << p[i].no << "\t\t" << p[i].at << "\t" << p[i].bt << "\t" << p[i].ct << "\t" << p[i].tat << "\t" << p[i].wt << "\t" << p[i].wt << endl;
+    }
+    avgtat /= n, avgwt /= n;
+    cout << "\nAverage TurnAroundTime=" << avgtat << endl;
+    cout << "Average WaitingTime=" << avgwt << endl;
     return 0;
 }
